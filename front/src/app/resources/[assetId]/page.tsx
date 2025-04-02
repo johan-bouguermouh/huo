@@ -50,11 +50,9 @@ export type ResourceProps = {
 
 async function Resource(params: ResourceProps) {
   const { assetId } = params.params;
-  console.log("assetId", assetId);
   const { resources } = (await cloudinary.api.resources_by_asset_ids(
     assetId
   )) as ResourceApiResponse;
-  console.log("resources", resources);
 
   return <MediaViewer resource={resources[0]} />;
 }

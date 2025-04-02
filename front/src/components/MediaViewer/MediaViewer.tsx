@@ -13,6 +13,12 @@ import {
   Wand2,
   Image,
   Ban,
+  SunDim,
+  Wand,
+  SquareDashedBottomCodeIcon,
+  Square,
+  RectangleHorizontal,
+  RectangleVertical,
 } from "lucide-react";
 
 import Container from "@/components/Container";
@@ -39,68 +45,143 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CldImage } from "next-cloudinary";
+import { CldImageProps } from "next-cloudinary";
+import { cn } from "@/lib/utils";
+import CldImage from "../CldImage";
+import MinatureListArtEffect from "./minatureListEffect";
+
+export type transformationType = Omit<CldImageProps, "src" | "alt">;
+
+export type RessourceResponseType = {
+  public_id: string;
+  format: string;
+  version: number;
+  resource_type: string;
+  type: string;
+  placeholder: boolean;
+  created_at: string;
+  bytes: number;
+  width: number;
+  height: number;
+  backup: boolean;
+  access_mode: string;
+  url: string;
+  secure_url: string;
+  tags: Array<string>;
+  context: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  next_cursor: string;
+  derived_next_cursor: string;
+  exif: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  image_metadata: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  media_metadata: object;
+  faces: number[][];
+  quality_analysis: number;
+  colors: [string, number][];
+  derived: Array<string>;
+  moderation: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  phash: string;
+  predominant: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  coordinates: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
+  access_control: Array<string>;
+  pages: number;
+
+  [futureKey: string]: any;
+};
 
 export type enhancementType =
   | undefined
-  | "improuve"
+  | "improve"
   | "restore"
-  | "removeBackground";
+  | "remove-background";
+
+export type cropType = undefined | "square" | "landscape" | "portrait";
 
 interface Deletion {
   state: string;
 }
 
-const MediaViewer = ({
-  resource,
-}: {
-  resource: {
-    public_id: string;
-    format: string;
-    version: number;
-    resource_type: string;
-    type: string;
-    placeholder: boolean;
-    created_at: string;
-    bytes: number;
-    width: number;
-    height: number;
-    backup: boolean;
-    access_mode: string;
-    url: string;
-    secure_url: string;
-    tags: Array<string>;
-    context: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    next_cursor: string;
-    derived_next_cursor: string;
-    exif: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    image_metadata: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    media_metadata: object;
-    faces: number[][];
-    quality_analysis: number;
-    colors: [string, number][];
-    derived: Array<string>;
-    moderation: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    phash: string;
-    predominant: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    coordinates: object; //won't change since it's response, we need to discuss documentation team about it before implementing.
-    access_control: Array<string>;
-    pages: number;
-
-    [futureKey: string]: any;
-  };
-}) => {
+const MediaViewer = ({ resource }: { resource: RessourceResponseType }) => {
   const sheetFiltersRef = useRef<HTMLDivElement | null>(null);
   const sheetInfoRef = useRef<HTMLDivElement | null>(null);
-
-  console.log("resource on MediaGallery", resource);
-
   // Sheet / Dialog UI state, basically controlling keeping them open or closed
 
   const [filterSheetIsOpen, setFilterSheetIsOpen] = useState(false);
   const [infoSheetIsOpen, setInfoSheetIsOpen] = useState(false);
   const [deletion, setDeletion] = useState<Deletion>();
   const [enhancement, setEnhancement] = useState<enhancementType>(undefined);
+  const [mediaScreenSizeWidth, setMediaScreenSizeWidth] = useState<
+    number | null
+  >(null);
+  const [crop, setCrop] = useState<cropType>(undefined);
+  const [artFilter, setArtFilter] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const updateScreenWidth = () => {
+      setMediaScreenSizeWidth(window.innerWidth);
+    };
+
+    updateScreenWidth();
+    window.addEventListener("resize", updateScreenWidth);
+
+    return () => {
+      window.removeEventListener("resize", updateScreenWidth);
+    };
+  }, []);
+
+  const transformation: transformationType = {};
+
+  console.log("enhancement", enhancement);
+
+  switch (enhancement) {
+    case "restore":
+      transformation.restore = true;
+      break;
+    case "improve":
+      transformation.improve = true;
+      break;
+    case "remove-background":
+      transformation.removeBackground = true;
+      break;
+    default:
+      break;
+  }
+
+  switch (crop) {
+    case "square":
+      console.log("Square crop selected");
+      transformation.crop = "crop";
+      if (resource.width > resource.height) {
+        transformation.height = resource.width;
+      } else {
+        transformation.width = resource.height;
+      }
+      transformation.crop = {
+        source: true,
+        type: "fill",
+      };
+      break;
+    case "landscape":
+      transformation.height = Math.floor(resource.width / (16 / 9));
+      transformation.crop = {
+        source: true,
+        type: "fill",
+      };
+      break;
+    case "portrait":
+      transformation.width = Math.floor(resource.height / (16 / 9));
+      transformation.crop = {
+        source: true,
+        type: "fill",
+      };
+
+      break;
+    default:
+      break;
+  }
+
+  if (artFilter) {
+    transformation.art = artFilter;
+  }
 
   // Canvas sizing based on the image dimensions. The tricky thing about
   // showing a single image in a space like this in a responsive way is trying
@@ -117,6 +198,12 @@ const MediaViewer = ({
   const isPortrait = canvasHeight > canvasWidth;
 
   const imgStyles: Record<string, string | number> = {};
+
+  const aspectRatio = canvasWidth / canvasHeight;
+  const adjustedWidth = mediaScreenSizeWidth;
+  const adjustedHeight = mediaScreenSizeWidth
+    ? mediaScreenSizeWidth / aspectRatio
+    : null;
 
   if (isLandscape) {
     imgStyles.maxWidth = resource.width;
@@ -137,6 +224,16 @@ const MediaViewer = ({
     setFilterSheetIsOpen(false);
     setInfoSheetIsOpen(false);
     setDeletion(undefined);
+  }
+
+  /**define border style whene selected */
+  function commandButtonIsSelected(
+    type: enhancementType | cropType,
+    data: any
+  ): string {
+    return type == data
+      ? "border border-white "
+      : "border-transparent border-0";
   }
 
   /**
@@ -231,9 +328,12 @@ const MediaViewer = ({
                 <li>
                   <Button
                     variant="ghost"
-                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected(undefined, enhancement)
+                    )}
                     onClick={() => {
-                      setEnhancement("improuve");
+                      setEnhancement(undefined);
                     }}
                   >
                     <Ban className="w-5 h-5 mr-3" />
@@ -243,36 +343,45 @@ const MediaViewer = ({
                 <li>
                   <Button
                     variant="ghost"
-                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected("improve", enhancement)
+                    )}
                     onClick={() => {
-                      setEnhancement("improuve");
+                      setEnhancement("improve");
                     }}
                   >
-                    <Ban className="w-5 h-5 mr-3" />
-                    <span className="text-[1.01rem]">Improuve</span>
+                    <SunDim className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Improve</span>
                   </Button>
                 </li>
                 <li>
                   <Button
                     variant="ghost"
-                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 ${commandButtonIsSelected(
+                      "restore",
+                      enhancement
+                    )}`}
                     onClick={() => {
                       setEnhancement("restore");
                     }}
                   >
-                    <Ban className="w-5 h-5 mr-3" />
+                    <Wand className="w-5 h-5 mr-3" />
                     <span className="text-[1.01rem]">Restore</span>
                   </Button>
                 </li>
                 <li>
                   <Button
                     variant="ghost"
-                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 ${commandButtonIsSelected(
+                      "remove-background",
+                      enhancement
+                    )}`}
                     onClick={() => {
-                      setEnhancement("removeBackground");
+                      setEnhancement("remove-background");
                     }}
                   >
-                    <Ban className="w-5 h-5 mr-3" />
+                    <SquareDashedBottomCodeIcon className="w-5 h-5 mr-3" />
                     <span className="text-[1.01rem]">Remove Background</span>
                   </Button>
                 </li>
@@ -288,10 +397,55 @@ const MediaViewer = ({
                 <li>
                   <Button
                     variant="ghost"
-                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected(undefined, crop)
+                    )}
+                    onClick={
+                      () => setCrop(undefined) // Reset crop to original
+                    }
                   >
                     <Image className="w-5 h-5 mr-3" />
                     <span className="text-[1.01rem]">Original</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected("square", crop)
+                    )}
+                    onClick={() => setCrop("square")}
+                  >
+                    <Square className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Square</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected("landscape", crop)
+                    )}
+                    onClick={() => setCrop("landscape")}
+                  >
+                    <RectangleHorizontal className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Landscape</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      `text-left justify-start w-full h-14 border-4 bg-zinc-700`,
+                      commandButtonIsSelected("portrait", crop)
+                    )}
+                    onClick={() => setCrop("portrait")}
+                  >
+                    <RectangleVertical className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Portrait</span>
                   </Button>
                 </li>
               </ul>
@@ -302,17 +456,14 @@ const MediaViewer = ({
                   Filters
                 </SheetTitle>
               </SheetHeader>
-              <ul className="grid grid-cols-2 gap-2">
-                <li>
-                  <button className={`w-full border-4 border-white`}>
-                    <img
-                      width={resource.width}
-                      height={resource.height}
-                      src={resource.secure_url}
-                      alt="No Filter"
-                    />
-                  </button>
-                </li>
+              <ul className="grid grid-cols-2 gap-2 scroll-smooth overflow-y-scroll h-[calc(100vh-200px)]">
+                <MinatureListArtEffect
+                  ressource={resource}
+                  handleFilterChange={(filter: string) => {
+                    console.log("Selected filter:", filter);
+                    setArtFilter(filter);
+                  }}
+                />
               </ul>
             </TabsContent>
           </Tabs>
@@ -446,14 +597,18 @@ const MediaViewer = ({
 
       {/** Asset viewer */}
 
-      <div className="relative flex justify-center items-center align-center w-full h-full">
+      <div
+        id="asset-viewer"
+        className="relative flex justify-center items-center align-center w-full h-full "
+      >
         <CldImage
+          key={JSON.stringify(transformation)}
           className="object-contain w-full h-full"
           width={resource.width}
           height={resource.height}
           src={resource.public_id}
           alt={`Image ${resource.public_id}`}
-          style={imgStyles}
+          {...transformation}
         />
       </div>
     </div>
