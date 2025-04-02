@@ -41,6 +41,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CldImage } from "next-cloudinary";
 
+export type enhancementType =
+  | undefined
+  | "improuve"
+  | "restore"
+  | "removeBackground";
+
 interface Deletion {
   state: string;
 }
@@ -94,6 +100,7 @@ const MediaViewer = ({
   const [filterSheetIsOpen, setFilterSheetIsOpen] = useState(false);
   const [infoSheetIsOpen, setInfoSheetIsOpen] = useState(false);
   const [deletion, setDeletion] = useState<Deletion>();
+  const [enhancement, setEnhancement] = useState<enhancementType>(undefined);
 
   // Canvas sizing based on the image dimensions. The tricky thing about
   // showing a single image in a space like this in a responsive way is trying
@@ -225,9 +232,48 @@ const MediaViewer = ({
                   <Button
                     variant="ghost"
                     className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    onClick={() => {
+                      setEnhancement("improuve");
+                    }}
                   >
                     <Ban className="w-5 h-5 mr-3" />
                     <span className="text-[1.01rem]">None</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    onClick={() => {
+                      setEnhancement("improuve");
+                    }}
+                  >
+                    <Ban className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Improuve</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    onClick={() => {
+                      setEnhancement("restore");
+                    }}
+                  >
+                    <Ban className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Restore</span>
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={`text-left justify-start w-full h-14 border-4 bg-zinc-700 border-white`}
+                    onClick={() => {
+                      setEnhancement("removeBackground");
+                    }}
+                  >
+                    <Ban className="w-5 h-5 mr-3" />
+                    <span className="text-[1.01rem]">Remove Background</span>
                   </Button>
                 </li>
               </ul>
@@ -402,11 +448,11 @@ const MediaViewer = ({
 
       <div className="relative flex justify-center items-center align-center w-full h-full">
         <CldImage
-          className="object-contain"
+          className="object-contain w-full h-full"
           width={resource.width}
           height={resource.height}
           src={resource.public_id}
-          alt="Cloudinary Logo"
+          alt={`Image ${resource.public_id}`}
           style={imgStyles}
         />
       </div>
