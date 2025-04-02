@@ -39,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CldImage } from "next-cloudinary";
 
 interface Deletion {
   state: string;
@@ -400,11 +401,11 @@ const MediaViewer = ({
       {/** Asset viewer */}
 
       <div className="relative flex justify-center items-center align-center w-full h-full">
-        <img
+        <CldImage
           className="object-contain"
           width={resource.width}
           height={resource.height}
-          src={resource.secure_url}
+          src={resource.public_id}
           alt="Cloudinary Logo"
           style={imgStyles}
         />
